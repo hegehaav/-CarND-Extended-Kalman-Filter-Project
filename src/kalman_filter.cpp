@@ -1,6 +1,7 @@
 #include "kalman_filter.h"
 #include "tools.h" /*CalculateJacobian*/
-#indlude <math.h> /*atan*/ 
+#include <math.h> /*atan2*/ 
+#include <iostream>
 
 using Eigen::MatrixXd;
 using Eigen::VectorXd;
@@ -56,34 +57,46 @@ void KalmanFilter::UpdateEKF(const VectorXd &z) {
   /**
    * TODO: update the state by using Extended Kalman Filter equations
    */
+  // cartesian coordinates 
+  double px = x_(0); 
+  double py = x_(1); 
+  double vx = x_(2); 
+  double vy = x_(3); 
+  // convert cartesian coordinates to polar coordinates   
+  double rho = sqrt(px*px+py*py);   
+  double phi = atan2(py,px);
+  double rho_dot; 
   
-  //TODO lecture 21: the second value in the coordinate vector is an angle. this must be normalizes s.t. the angle is between -pi and pi (subtract 2pi until it is in the range 
-  float px = x_(0); 
-  float py = x_(1); 
-  float vx = x_(2); 
-  float vy = x_(3); 
-  float c1 = sprt(px*px-py*py);   
- 
-  // check validity of cooridnates 
-  if (px == 0 && py == 0){
-    cout << "ERROR! Invalid values for px and py: both cannot be zero.";
+  // check validity of data 
+  if(fabs(rho) <0.0001) {
+    std::cout << "ERROR! Invalid values for px and py: both cannot be zero.";
+    rho_dot = 0; 
+  } 
+  else {
+    rho_dot = (px*vx+py*vy)/rho;
   }
-  // Calculate Jacobian H
-  MatrixXd Hj = CalculateJacobian(&x_);
-  MatrixXd Hjt = Hj.transpose();
-    
-  // Convert cartesian coordinates to polar coordinates   
+
   VectorXd z_pred(3); 
-  z_pred << c1, 
-      atan(py/px),
-      (px*vx+py*vy)/c1; 
+  z_pred << rho, phi, rho_dot;
+  VectorXd y = z - z_pred; 
+  // Make sure phi is between pi and - pi: 
+  while (y(1) > M_PI || y(1) < - M_PI){
+    if ( y(1) > M_PI ) {
+      y(1) -= M_PI;
+    } else {
+      y(1) += M_PI;
+    }
+  }
   
-  y = z - z_pred; 
-  S = Hj * P_ * Hjt + R_; 
-  Si = S.inverse(); 
-  K = P_ * Hjt * Si;
+  MatrixXd Ht = H_.transpose();
+  MatrixXd S = H_ * P_* Ht + R_; 
+  MatrixXd Si = S.inverse();
+  MatrixXd K = P_ * Ht * Si;
+
+  // new estimate
   x_ = x_ + (K*y); 
   long x_size = x_.size();
   MatrixXd I = MatrixXd::Identity(x_size, x_size);
-  P_ = (I - K * Hj) * P_;
+  P_ = (I - K * H_) * P_;
+
 }

@@ -18,15 +18,20 @@ VectorXd Tools::CalculateRMSE(const vector<VectorXd> &estimations,
   VectorXd rmse(4);
   rmse << 0,0,0,0; 
   
+  unsigned int n = estimations.size();
+  
   // check validity of estimations and ground truth 
-  if (estimations.size() != ground_truth.size()
-      || estimations.size() == 0) {
-    cout << "Invalid estimation or ground_truth data" << endl;
+  if(n != ground_truth.size()) {
+    std::cout << "ERROR! estimation or ground_truth are not the same size" << std::endl;
+    return rmse;
+  }
+   if(n == 0) {
+    std::cout << "ERROR! estimation size = 0" << std::endl;
     return rmse;
   }
   
   // caluclate sum of squared residuals 
-  for (unsigned int i=0; i < estimations.size(); ++i) {
+  for (unsigned int i=0; i < n; ++i) {
     VectorXd residual = estimations[i] - ground_truth[i];
     // coefficient-wise multiplication
     residual = residual.array()*residual.array();
@@ -34,7 +39,7 @@ VectorXd Tools::CalculateRMSE(const vector<VectorXd> &estimations,
   }
 
   // calculate the mean
-  rmse = rmse/estimations.size();
+  rmse = rmse/n;
   
   // calculate the squared root
   rmse = rmse.array().sqrt();
@@ -49,24 +54,32 @@ MatrixXd Tools::CalculateJacobian(const VectorXd& x_state) {
    * Calculate a Jacobian here.
    */
   MatrixXd Hj(3,4);
-  // recover state parameters
-  float px = x_state(0);
-  float py = x_state(1);
-  float vx = x_state(2);
-  float vy = x_state(3);
 
-  // check division by zero
-  if(px == 0 && py ==0){
-      cout << "Error: x and y cannot both e zero. Initial H_j is returned";
+  // check x_state validity 
+  if(x_state.size()!= 4){
+      std::cout << "ERROR: x_state has the wrong size ";
       return Hj;
   }
+  // recover state parameters
+  double px = x_state(0);
+  double py = x_state(1);
+  double vx = x_state(2);
+  double vy = x_state(3);
+
+
   //pre-compute terms to avoid repeated calculations 
-  float c1 = px*px+py*py; 
-  float c2 = sqrt(c1);
-  float c3 = (c1*c2); 
+  double c1 = px*px+py*py; 
+  double c2 = sqrt(c1);
+  double c3 = (c1*c2); 
+  
+    // check division by zero
+  if(fabs(c1)<0.0001){
+      std::cout << "Error: x and y cannot both e zero. Initial H_j is returned";
+      return Hj;
+  }
   
   // compute the Jacobian matrix
-  Hj << (pz/c2), (py/c2), 0, 0,
+  Hj << (px/c2), (py/c2), 0, 0,
       -(py/c1), (px/c1), 0, 0,
       py*(vx*py - vy*px)/c3, px*(px*vy - py*vx)/c3, px/c2, py/c2; 
 
