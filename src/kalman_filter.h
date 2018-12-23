@@ -65,4 +65,4 @@ class KalmanFilter {
   Eigen::MatrixXd R_;
 };
 
-#endif // KALMAN_FILTER_H_
+#endif // KALMAN_FILTER_H
